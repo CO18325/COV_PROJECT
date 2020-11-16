@@ -101,6 +101,7 @@ def scrap():
 
 
 @app.route('/api/mail', methods=['POST'])
+# FUNCTION FOR MAILER
 def mail():
     import smtplib
     from email.mime.text import MIMEText
