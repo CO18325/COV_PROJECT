@@ -109,12 +109,12 @@ def image_processing(image):
 def sd_gen():
     """Video streaming generator function."""
     frame_number = 0
-    filename = "videos/example.mp4"
+    filename = "videos/3.mp4"
 
     cap = cv2.VideoCapture(filename)
     # cap = cv2.VideoCapture(0)
-
-    # Read until video is completed
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    out = cv2.VideoWriter('videos/output1.mp4', fourcc, 20.0, (480,540))
     while(cap.isOpened()):
       # Capture frame-by-frame
         ret, frame = cap.read()
@@ -125,16 +125,18 @@ def sd_gen():
         video = current_img.shape
         frame_number += 1
         Frame = current_img
-
+        intial_setup()
         if(frame_number%5 == 0 or frame_number == 1):
-
-            intial_setup()
+            
             image_processing(current_img)
             Frame = processedImg
-
+            
+        out.write(processedImg)
+            
         frame = cv2.imencode('.jpg', processedImg)[1].tobytes()
+        
         yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
         # time.sleep(0.1)
         key = cv2.waitKey(20)
         if key == 27:
-              break
+            break
