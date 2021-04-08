@@ -3,7 +3,6 @@ import cv2
 import imutils
 import os
 import time
-
 def check_distance(a,  b):
 
     dist = ((a[0] - b[0]) ** 2 + 550 / ((a[1] + b[1]) / 2) * (a[1] - b[1]) ** 2) ** 0.5
@@ -23,6 +22,9 @@ def intial_setup():
     LABELS = open(labelsPath).read().strip().split("\n")  
     
     net = cv2.dnn.readNetFromDarknet(config, weights)
+# uncomment these line while using cuda  
+    net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+    net.setPreferableBackend(cv2.dnn.DNN_TARGET_CUDA)
     ln = net.getLayerNames()
     ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
@@ -45,7 +47,7 @@ def image_processing(image):
             maxi_class = np.argmax(scores)
             confidence = scores[maxi_class]
             if LABELS[maxi_class] == "person":
-                if confidence > 0.5:
+                if confidence > 0.1:
                     box = detection[0:4] * np.array([W, H, W, H])
                     (centerX, centerY, width, height) = box.astype("int")
                     x = int(centerX - (width / 2))
@@ -81,21 +83,21 @@ def image_processing(image):
             (w, h) = (outline[i][2], outline[i][3])
             if status[index] == True:
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 150), 2)
-                font = cv2.FONT_HERSHEY_SIMPLEX 
-                # org 
-                org = (150, 250) 
-                # fontScale 
-                fontScale = 1
-                # red color in BGR 
-                color = (0, 0, 255) 
-                # Line thickness of 2 px 
-                thickness = 2
-                x,y,w,h = 130,220,175,60
-              # Draw black background rectangle
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0,0,0), -1)
-                # Using cv2.putText() method 
-                cv2.putText(frame, 'Warning', org, font,  
-                                fontScale, color, thickness, cv2.LINE_AA) 
+            #     font = cv2.FONT_HERSHEY_SIMPLEX 
+            #     # org 
+            #     org = (150, 250) 
+            #     # fontScale 
+            #     fontScale = 1
+            #     # red color in BGR 
+            #     color = (0, 0, 255) 
+            #     # Line thickness of 2 px 
+            #     thickness = 2
+            #     x,y,w,h = 130,220,175,60
+            #   # Draw black background rectangle
+            #     cv2.rectangle(frame, (x, y), (x + w, y + h), (0,0,0), -1)
+            #     # Using cv2.putText() method 
+            #     cv2.putText(frame, 'Warning', org, font,  
+            #                     fontScale, color, thickness, cv2.LINE_AA) 
             elif status[index] == False:
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
             index += 1
@@ -109,28 +111,30 @@ def image_processing(image):
 def sd_gen():
     """Video streaming generator function."""
     frame_number = 0
-    filename = "videos/3.mp4"
+    filename = "videos/6.mp4"
+
 
     cap = cv2.VideoCapture(filename)
     # cap = cv2.VideoCapture(0)
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-    out = cv2.VideoWriter('videos/output1.mp4', fourcc, 20.0, (480,540))
+    out = cv2.VideoWriter('videos/o6.mp4', fourcc, 20.0, (680,765))
     while(cap.isOpened()):
       # Capture frame-by-frame
         ret, frame = cap.read()
         if not ret:
             break
         current_img = frame.copy()
-        current_img = imutils.resize(current_img, width=480)
+        current_img = imutils.resize(current_img, width=680)
         video = current_img.shape
         frame_number += 1
         Frame = current_img
-        intial_setup()
+        
         if(frame_number%5 == 0 or frame_number == 1):
-            
+            intial_setup()
             image_processing(current_img)
             Frame = processedImg
-            
+
+        print(processedImg.shape)
         out.write(processedImg)
             
         frame = cv2.imencode('.jpg', processedImg)[1].tobytes()
