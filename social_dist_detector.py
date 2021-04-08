@@ -23,8 +23,8 @@ def intial_setup():
     
     net = cv2.dnn.readNetFromDarknet(config, weights)
 # uncomment these line while using cuda  
-    net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
-    net.setPreferableBackend(cv2.dnn.DNN_TARGET_CUDA)
+    # net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+    # net.setPreferableBackend(cv2.dnn.DNN_TARGET_CUDA)
     ln = net.getLayerNames()
     ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
