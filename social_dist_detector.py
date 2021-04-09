@@ -14,19 +14,20 @@ def check_distance(a,  b):
         return False
 
 def intial_setup():
-    global net, ln, LABELS
-
-    weights = "yolo/yolov3.weights"
-    config = "yolo/yolov3.cfg"
+    global net, name
+    weights = "yolo/yolov4.weights"
+    config = "yolo/yolov4.cfg"
     labelsPath = "yolo/coco.names"
-    LABELS = open(labelsPath).read().strip().split("\n")  
-    
-    net = cv2.dnn.readNetFromDarknet(config, weights)
+    name = open(labelsPath).read().strip().split("\n")  
+    net = cv2.dnn_DetectionModel(config, weights)
 # uncomment these line while using cuda  
-    # net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
-    # net.setPreferableBackend(cv2.dnn.DNN_TARGET_CUDA)
-    ln = net.getLayerNames()
-    ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+    net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+    net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+    net.setInputSize(416, 416)
+    net.setInputScale(1.0 / 255)
+    net.setInputSwapRB(True)
+    # ln = net.getLayerNames()
+    # ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
 def image_processing(image):
 
@@ -35,28 +36,27 @@ def image_processing(image):
     frame = image.copy()
     if W is None or H is None:
         (H, W) = frame.shape[:2]
-    blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=False)
-    net.setInput(blob)
-    layerOutputs = net.forward(ln)
-    confidences = []
+    # blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=False)
+    # net.setInput(blob)
+
+
+    confidences1 = []
     outline = []
+
+    classes, confidences, boxes= net.detect(frame, confThreshold=0.1, nmsThreshold=0.4)
+    if(not len(classes) == 0):
+        for classId, confidence, box in zip(classes.flatten(), confidences.flatten(), boxes):
+            if(name[classId]=="person"):
+                (x, y, width, height) = box.astype("int")
+                x = int(x)
+                y = int(y)
+                outline.append([x, y, int(width), int(height)])
+                confidences1.append(float(confidence))
+
+    box_line = cv2.dnn.NMSBoxes(outline, confidences1, 0.4, 0.5)
     
-    for output in layerOutputs:
-        for detection in output:
-            scores = detection[5:]
-            maxi_class = np.argmax(scores)
-            confidence = scores[maxi_class]
-            if LABELS[maxi_class] == "person":
-                if confidence > 0.1:
-                    box = detection[0:4] * np.array([W, H, W, H])
-                    (centerX, centerY, width, height) = box.astype("int")
-                    x = int(centerX - (width / 2))
-                    y = int(centerY - (height / 2))
-                    outline.append([x, y, int(width), int(height)])
-                    confidences.append(float(confidence))
-
-    box_line = cv2.dnn.NMSBoxes(outline, confidences, 0.5, 0.3)
-
+    
+    
     if len(box_line) > 0:
         flat_box = box_line.flatten()
         pairs = []
@@ -83,21 +83,6 @@ def image_processing(image):
             (w, h) = (outline[i][2], outline[i][3])
             if status[index] == True:
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 150), 2)
-            #     font = cv2.FONT_HERSHEY_SIMPLEX 
-            #     # org 
-            #     org = (150, 250) 
-            #     # fontScale 
-            #     fontScale = 1
-            #     # red color in BGR 
-            #     color = (0, 0, 255) 
-            #     # Line thickness of 2 px 
-            #     thickness = 2
-            #     x,y,w,h = 130,220,175,60
-            #   # Draw black background rectangle
-            #     cv2.rectangle(frame, (x, y), (x + w, y + h), (0,0,0), -1)
-            #     # Using cv2.putText() method 
-            #     cv2.putText(frame, 'Warning', org, font,  
-            #                     fontScale, color, thickness, cv2.LINE_AA) 
             elif status[index] == False:
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
             index += 1
@@ -111,31 +96,33 @@ def image_processing(image):
 def sd_gen():
     """Video streaming generator function."""
     frame_number = 0
-    filename = "videos/6.mp4"
-
+    filename = "videos/rt3.mp4"
+    intial_setup()
 
     cap = cv2.VideoCapture(filename)
     # cap = cv2.VideoCapture(0)
-    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-    out = cv2.VideoWriter('videos/o6.mp4', fourcc, 20.0, (680,765))
+    # fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    # out = cv2.VideoWriter('videos/new.avi', fourcc, 20.0, (680,765))
     while(cap.isOpened()):
       # Capture frame-by-frame
         ret, frame = cap.read()
         if not ret:
             break
+        timer = time.time()
         current_img = frame.copy()
-        current_img = imutils.resize(current_img, width=680)
+        # current_img = imutils.resize(current_img, width=680)
         video = current_img.shape
         frame_number += 1
         Frame = current_img
         
-        if(frame_number%5 == 0 or frame_number == 1):
-            intial_setup()
+        if(frame_number%3 == 0 or frame_number == 1):
+            
             image_processing(current_img)
             Frame = processedImg
-
-        print(processedImg.shape)
-        out.write(processedImg)
+            print('[Info] Time Taken: {} | FPS: {}'.format(time.time() - timer, 1/(time.time() - timer)), end='\r')
+        # out.write(processedImg)
+        # print(processedImg.shape)
+        
             
         frame = cv2.imencode('.jpg', processedImg)[1].tobytes()
         
